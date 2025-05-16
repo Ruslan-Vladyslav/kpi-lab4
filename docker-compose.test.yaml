@@ -11,35 +11,26 @@ services:
       - server3
       - balancer
 
-
   balancer:
     build: .
-    command: ["lb", "--trace=true"]
+    entrypoint: ["/opt/practice-4/lb", "--trace=true"]
     networks:
       - servers
-    ports:
-      - "8090:8090"
 
   server1:
     build: .
     networks:
       - servers
-    ports:
-      - "8080:8080"
 
   server2:
     build: .
     networks:
       - servers
-    ports:
-      - "8081:8080"
 
   server3:
     build: .
     networks:
       - servers
-    ports:
-      - "8082:8080"
 
 networks:
   servers:

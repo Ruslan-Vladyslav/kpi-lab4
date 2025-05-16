@@ -33,7 +33,7 @@ var (
 		"server3:8080",
 	}
 
-	mu            sync.RWMutex
+	mu             sync.RWMutex
 	healthyServers []string
 )
 
@@ -45,16 +45,32 @@ func scheme() string {
 }
 
 func health(dst string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*timeoutSec)*time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, "GET",
 		fmt.Sprintf("%s://%s/health", scheme(), dst), nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Printf("Health check failed for %s: %s", dst, err)
 		return false
 	}
 	defer resp.Body.Close()
+	log.Printf("Health check %s returned %d", dst, resp.StatusCode)
 	return resp.StatusCode == http.StatusOK
+}
+
+func updateHealthyServersOnce() {
+	var healthy []string
+	for _, s := range serversPool {
+		if health(s) {
+			healthy = append(healthy, s)
+		}
+	}
+	mu.Lock()
+	healthyServers = healthy
+	mu.Unlock()
+
+	log.Printf("Initial healthy servers: %v", healthy)
 }
 
 // Проактивне оновлення списку здорових серверів
@@ -76,7 +92,7 @@ func updateHealthyServers() {
 }
 
 // Вибір сервера за хешем шляху
-func selectServer(path string) (string, error) {
+func selectServer(r *http.Request) (string, error) {
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -85,7 +101,7 @@ func selectServer(path string) (string, error) {
 	}
 
 	h := fnv.New32a()
-	h.Write([]byte(path))
+	h.Write([]byte(r.URL.Path + "?" + r.URL.RawQuery))
 	idx := int(h.Sum32()) % len(healthyServers)
 
 	return healthyServers[idx], nil
@@ -128,11 +144,14 @@ func forward(dst string, rw http.ResponseWriter, r *http.Request) error {
 func main() {
 	flag.Parse()
 
-	// Запускаємо оновлення здорових серверів у фоновому режимі
+	timeout = time.Duration(*timeoutSec) * time.Second
+
+	updateHealthyServersOnce()
+
 	go updateHealthyServers()
 
 	frontend := httptools.CreateServer(*port, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		dst, err := selectServer(r.URL.Path)
+		dst, err := selectServer(r)
 		if err != nil {
 			http.Error(rw, "No healthy servers available", http.StatusServiceUnavailable)
 			return
@@ -145,4 +164,3 @@ func main() {
 	frontend.Start()
 	signal.WaitForTerminationSignal()
 }
-

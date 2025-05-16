@@ -42,12 +42,13 @@ func TestSelectServer_ReturnsConsistentResult(t *testing.T) {
 	healthyServers = []string{"server1:8080", "server2:8080", "server3:8080"}
 	mu.Unlock()
 
-	s1, err1 := selectServer("/api/test")
-	s2, err2 := selectServer("/api/test")
+	req := httptest.NewRequest("GET", "/api/test?foo=bar", nil)
+	s1, err1 := selectServer(req)
+	s2, err2 := selectServer(req)
 
 	assert.NoError(t, err1)
 	assert.NoError(t, err2)
-	assert.Equal(t, s1, s2, "Same path should be routed to the same server")
+	assert.Equal(t, s1, s2, "Same path and query should be routed to the same server")
 }
 
 func TestSelectServer_EmptyHealthyList(t *testing.T) {
@@ -55,7 +56,8 @@ func TestSelectServer_EmptyHealthyList(t *testing.T) {
 	healthyServers = []string{}
 	mu.Unlock()
 
-	_, err := selectServer("/anything")
+	req := httptest.NewRequest("GET", "/anything", nil)
+	_, err := selectServer(req)
 	assert.Error(t, err)
 }
 
@@ -89,19 +91,6 @@ func TestForward_Failure(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, rr.Code)
-}
-
-// Tests health
-func updateHealthyServersOnce() {
-	var healthy []string
-	for _, s := range serversPool {
-		if health(s) {
-			healthy = append(healthy, s)
-		}
-	}
-	mu.Lock()
-	healthyServers = healthy
-	mu.Unlock()
 }
 
 func TestUpdateHealthyServersOnce(t *testing.T) {
