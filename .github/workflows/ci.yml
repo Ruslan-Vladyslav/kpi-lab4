@@ -19,8 +19,8 @@ jobs:
 
       - name: Build images and run unit tests
         run: |
-          docker-compose -f docker-compose.yaml build
+          docker compose -f docker-compose.yaml build
 
       - name: Run integration tests
         run: |
-          docker-compose -f docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from test
+          docker compose -f docker-compose.test.yaml up --build --abort-on-container-exit --exit-code-from test
