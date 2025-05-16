@@ -1,3 +1,11 @@
-module github.com/roman-mazur/architecture-practice-4-template
+module github.com/Ruslan-Vladyslav/kpi-lab4
 
 go 1.24
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/roman-mazur/architecture-practice-4-template v0.0.0-20250501203049-b73d446da176 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
